@@ -230,7 +230,7 @@ class QuietTextPrinter(object):
 
     def diff(self, _, difference):
         if self._current:
-            self._write('## %s (%s)', self._current.namespaced_name, self._current.kind)
+            self._write('%s (%s)', self._current.namespaced_name, self._current.kind)
         else:
             self._write('## UNKNOWN')
         self._write('')
@@ -244,11 +244,20 @@ class JSONPrinter(object):
     def __init__(self):
         self.data = collections.defaultdict(list)
 
-    def add(self, path, kube_obj):
-        pass
+    def add(self, _, kube_obj):
+        self._current = kube_obj
 
     def diff(self, path, difference):
-        self.data[path].append(difference.to_text())
+        if self._current:
+            self.data[self._current.kind].append({
+                "name": self._current.namespaced_name,
+                "path": path,
+                "difference": difference.to_text(self._current.kind),
+            })
+
+            self.data[path].append(difference.to_text())
+        else:
+            self.data[path].append(difference.to_text())
 
     def finish(self):
         print(json.dumps(self.data, sort_keys=True, indent=2, separators=(',', ': ')))
